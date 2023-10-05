@@ -24,7 +24,7 @@ open class UIPiPView: UIView,
 
     public let pipBufferDisplayLayer = AVSampleBufferDisplayLayer()
 
-    public weak var delegate: ( AVPictureInPictureControllerDelegate & AVPictureInPictureSampleBufferPlaybackDelegate & UIPiPViewDelegate)?
+    public weak var delegate: UIPiPViewDelegate?
 
     /// Created in lazy because there is a problem with screen grayout
     /// when generating synchronously before PiP starts.
@@ -296,6 +296,6 @@ open class UIPiPView: UIView,
     }
 }
 
-open protocol UIPiPViewDelegate{
+open protocol UIPiPViewDelegate : AVPictureInPictureControllerDelegate, AVPictureInPictureSampleBufferPlaybackDelegate{
     func pictureInPictureControllerInit(_ pictureInPictureController: AVPictureInPictureController) -> AVPictureInPictureController;
 }
