@@ -24,6 +24,8 @@ open class UIPiPView: UIView,
 
     public let pipBufferDisplayLayer = AVSampleBufferDisplayLayer()
 
+    public weak var delegate: ( AVPictureInPictureControllerDelegate & AVPictureInPictureSampleBufferPlaybackDelegate & UIPiPViewDelegate)?
+
     /// Created in lazy because there is a problem with screen grayout
     /// when generating synchronously before PiP starts.
     /// Possible bug in iOS 16.
@@ -33,6 +35,7 @@ open class UIPiPView: UIView,
                 sampleBufferDisplayLayer: pipBufferDisplayLayer,
                 playbackDelegate: self))
             controller.delegate = self
+            delegate?.pictureInPictureControllerInit(controller)
             return controller
         } else {
             return nil
@@ -172,7 +175,7 @@ open class UIPiPView: UIView,
         if (pipBufferDisplayLayer.status == .failed) {
             pipBufferDisplayLayer.flush()
         }
-        guard let buffer = makeNextVieoBuffer() else { return }
+        guard let buffer = makeNextVideoBuffer() else { return }
         pipBufferDisplayLayer.enqueue(buffer)
     }
 
@@ -196,69 +199,103 @@ open class UIPiPView: UIView,
     /// Create and return a CMSampleBuffer.
     /// This function basically does not need to be called by UIPiPView users,
     /// but if you want to create your own modified CMSampleBuffer, prepare an overwritten function.
-    open func makeNextVieoBuffer() -> CMSampleBuffer? {
-        return self.makeSampleBuffer()
+    open func makeNextVideoBuffer() -> CMSampleBuffer? {
+        self.makeSampleBuffer()
     }
 
     // MARK: AVPictureInPictureControllerDelegate
-    open func pictureInPictureController(
+    private func pictureInPictureController(
         _ pictureInPictureController: AVPictureInPictureController,
         failedToStartPictureInPictureWithError error: Error
     ) {
+        delegate?.pictureInPictureController?(pictureInPictureController, failedToStartPictureInPictureWithError: error)
     }
 
-    open func pictureInPictureControllerWillStartPictureInPicture(
+    private func pictureInPictureControllerWillStartPictureInPicture(
         _ pictureInPictureController: AVPictureInPictureController
     ) {
+        delegate?.pictureInPictureControllerWillStartPictureInPicture?(pictureInPictureController)
     }
 
     /// Always call the parent when overriding this function.
-    open func pictureInPictureControllerWillStopPictureInPicture(
+    private func pictureInPictureControllerWillStopPictureInPicture(
         _ pictureInPictureController: AVPictureInPictureController
     ) {
         refreshIntervalTimer?.invalidate()
         refreshIntervalTimer = nil
+        delegate?.pictureInPictureControllerWillStopPictureInPicture?(pictureInPictureController)
     }
 
     // MARK: AVPictureInPictureSampleBufferPlaybackDelegate
-    open func pictureInPictureController(
+    private func pictureInPictureController(
         _ pictureInPictureController: AVPictureInPictureController,
         setPlaying playing: Bool
     ) {
+        delegate?.pictureInPictureController(pictureInPictureController, setPlaying: playing)
     }
 
-    open func pictureInPictureControllerTimeRangeForPlayback(
+    private func pictureInPictureControllerTimeRangeForPlayback(
         _ pictureInPictureController: AVPictureInPictureController
     ) -> CMTimeRange {
+        //not going to ask delegate for performance issue
 
         /// The following code will suppress AVKit (AVTimer work queue).
         /// see https://github.com/uakihir0/UIPiPView/issues/17
-        return .init(
-            start: .zero,
-            duration: .init(
-                value: 3600 * 24,
-                timescale: 1
-            )
+        .init(
+                start: .zero,
+                duration: .init(
+                        value: 3600 * 24,
+                        timescale: 1
+                )
         )
     }
 
-    open func pictureInPictureControllerIsPlaybackPaused(
+    private func pictureInPictureControllerIsPlaybackPaused(
         _ pictureInPictureController: AVPictureInPictureController
     ) -> Bool {
-        return false
+        delegate?.pictureInPictureControllerIsPlaybackPaused(pictureInPictureController)
     }
 
-    open func pictureInPictureController(
+    private func pictureInPictureController(
         _ pictureInPictureController: AVPictureInPictureController,
         didTransitionToRenderSize newRenderSize: CMVideoDimensions
     ) {
+        delegate?.pictureInPictureController(pictureInPictureController, didTransitionToRenderSize: newRenderSize)
     }
 
-    open func pictureInPictureController(
+    private func pictureInPictureController(
         _ pictureInPictureController: AVPictureInPictureController,
         skipByInterval skipInterval: CMTime,
         completion completionHandler: @escaping () -> Void
     ) {
-        completionHandler()
+        delegate?.pictureInPictureController(pictureInPictureController, skipByInterval: skipInterval, completion: completionHandler)
     }
+
+    private func pictureInPictureController(_ pictureInPictureController: AVPictureInPictureController) async -> Bool {
+        await delegate?.pictureInPictureController?(pictureInPictureController)
+    }
+
+    private func pictureInPictureController(_ pictureInPictureController: AVPictureInPictureController, restoreUserInterfaceForPictureInPictureStopWithCompletionHandler completionHandler: @escaping (Bool) -> ()) {
+        delegate?.pictureInPictureController?(pictureInPictureController, restoreUserInterfaceForPictureInPictureStopWithCompletionHandler: completionHandler)
+    }
+
+    private func pictureInPictureController(_ pictureInPictureController: AVPictureInPictureController, skipByInterval skipInterval: CMTime) async {
+        await pictureInPictureController(pictureInPictureController, skipByInterval: skipInterval)
+    }
+
+    private func pictureInPictureControllerDidStartPictureInPicture(_ pictureInPictureController: AVPictureInPictureController) {
+        delegate?.pictureInPictureControllerDidStartPictureInPicture?(pictureInPictureController)
+    }
+
+    private func pictureInPictureControllerDidStopPictureInPicture(_ pictureInPictureController: AVPictureInPictureController) {
+        delegate?.pictureInPictureControllerDidStopPictureInPicture?(pictureInPictureController)
+    }
+
+    private func pictureInPictureControllerShouldProhibitBackgroundAudioPlayback(_ pictureInPictureController: AVPictureInPictureController) -> Bool {
+        pictureInPictureControllerShouldProhibitBackgroundAudioPlayback(pictureInPictureController)
+    }
+}
+
+open protocol UIPiPViewDelegate{
+    func pictureInPictureControllerInit(_ pictureInPictureController: AVPictureInPictureController) -> AVPictureInPictureController;
 }
