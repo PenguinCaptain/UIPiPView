@@ -37,7 +37,10 @@ open class UIPiPView: UIView,
                     sampleBufferDisplayLayer: pipBufferDisplayLayer,
                     playbackDelegate: self))
             controller.delegate = self
-            var initedController = delegate?.pictureInPictureControllerInit(controller)
+            var initedController = controller;
+            if let existingDelegate = delegate{
+                initedController = existingDelegate.pictureInPictureControllerInit(controller);
+            }
             return initedController
         } else {
             return nil
