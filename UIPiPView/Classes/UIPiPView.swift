@@ -13,6 +13,7 @@ open class UIPiPView: UIView,
         AVPictureInPictureControllerDelegate,
         AVPictureInPictureSampleBufferPlaybackDelegate {
 
+
     /// Returns whether or not UIPiPView is supported.
     /// It depends on the iOS version, also note that it cannot be used with the iOS simulator.
     static public func isUIPiPViewSupported() -> Bool {
@@ -25,7 +26,7 @@ open class UIPiPView: UIView,
 
     public let pipBufferDisplayLayer = AVSampleBufferDisplayLayer()
 
-    public weak var delegate: UIPiPViewDelegate?
+    public var delegate: UIPiPViewDelegate?
 
     /// Created in lazy because there is a problem with screen grayout
     /// when generating synchronously before PiP starts.
@@ -227,38 +228,28 @@ open class UIPiPView: UIView,
         self.makeSampleBuffer()
     }
 
-    // MARK: AVPictureInPictureControllerDelegate
-    private func pictureInPictureController(
-            _ pictureInPictureController: AVPictureInPictureController,
-            failedToStartPictureInPictureWithError error: Error
-    ) {
-        delegate?.pictureInPictureController?(pictureInPictureController, failedToStartPictureInPictureWithError: error)
-    }
-
-    private func pictureInPictureControllerWillStartPictureInPicture(
+    public func pictureInPictureControllerWillStartPictureInPicture(
             _ pictureInPictureController: AVPictureInPictureController
     ) {
-        delegate?.pictureInPictureControllerWillStartPictureInPicture?(pictureInPictureController)
     }
 
     /// Always call the parent when overriding this function.
-    private func pictureInPictureControllerWillStopPictureInPicture(
+    public func pictureInPictureControllerWillStopPictureInPicture(
             _ pictureInPictureController: AVPictureInPictureController
     ) {
         refreshIntervalTimer?.invalidate()
         refreshIntervalTimer = nil
-        delegate?.pictureInPictureControllerWillStopPictureInPicture?(pictureInPictureController)
     }
 
-    // MARK: AVPictureInPictureSampleBufferPlaybackDelegate
-    private func pictureInPictureController(
-            _ pictureInPictureController: AVPictureInPictureController,
-            setPlaying playing: Bool
-    ) {
-        delegate?.pictureInPictureController(pictureInPictureController, setPlaying: playing)
+    public func pictureInPictureControllerDidStartPictureInPicture(_ pictureInPictureController: AVPictureInPictureController) {
+        delegate?.pictureInPictureControllerDidStartPictureInPicture(pictureInPictureController)
     }
 
-    private func pictureInPictureControllerTimeRangeForPlayback(
+    public func pictureInPictureControllerDidStopPictureInPicture(_ pictureInPictureController: AVPictureInPictureController) {
+        delegate?.pictureInPictureControllerDidStopPictureInPicture(pictureInPictureController)
+    }
+
+    public func pictureInPictureControllerTimeRangeForPlayback(
             _ pictureInPictureController: AVPictureInPictureController
     ) -> CMTimeRange {
         //not going to ask delegate for performance issue
@@ -274,54 +265,36 @@ open class UIPiPView: UIView,
         )
     }
 
-    private func pictureInPictureControllerIsPlaybackPaused(
-            _ pictureInPictureController: AVPictureInPictureController
-    ) -> Bool {
-        delegate?.pictureInPictureControllerIsPlaybackPaused(pictureInPictureController)
+    public func pictureInPictureController(_ pictureInPictureController: AVPictureInPictureController, setPlaying playing: Bool) {
     }
 
-    private func pictureInPictureController(
-            _ pictureInPictureController: AVPictureInPictureController,
-            didTransitionToRenderSize newRenderSize: CMVideoDimensions
-    ) {
-        delegate?.pictureInPictureController(pictureInPictureController, didTransitionToRenderSize: newRenderSize)
+    public func pictureInPictureControllerIsPlaybackPaused(_ pictureInPictureController: AVPictureInPictureController) -> Bool {
+        false
     }
 
-    private func pictureInPictureController(
+    public func pictureInPictureController(_ pictureInPictureController: AVPictureInPictureController, didTransitionToRenderSize newRenderSize: CMVideoDimensions) {
+    }
+
+    public func pictureInPictureController(
             _ pictureInPictureController: AVPictureInPictureController,
             skipByInterval skipInterval: CMTime,
             completion completionHandler: @escaping () -> Void
     ) {
-        delegate?.pictureInPictureController(pictureInPictureController, skipByInterval: skipInterval, completion: completionHandler)
+        completionHandler()
     }
 
-    private func pictureInPictureController(_ pictureInPictureController: AVPictureInPictureController) async -> Bool {
-        await delegate?.pictureInPictureController?(pictureInPictureController)
-    }
-
-    private func pictureInPictureController(_ pictureInPictureController: AVPictureInPictureController, restoreUserInterfaceForPictureInPictureStopWithCompletionHandler completionHandler: @escaping (Bool) -> ()) {
-        delegate?.pictureInPictureController?(pictureInPictureController, restoreUserInterfaceForPictureInPictureStopWithCompletionHandler: completionHandler)
-    }
-
-    private func pictureInPictureController(_ pictureInPictureController: AVPictureInPictureController, skipByInterval skipInterval: CMTime) async {
-        await pictureInPictureController(pictureInPictureController, skipByInterval: skipInterval)
-    }
-
-    private func pictureInPictureControllerDidStartPictureInPicture(_ pictureInPictureController: AVPictureInPictureController) {
-        delegate?.pictureInPictureControllerDidStartPictureInPicture?(pictureInPictureController)
-    }
-
-    private func pictureInPictureControllerDidStopPictureInPicture(_ pictureInPictureController: AVPictureInPictureController) {
-        delegate?.pictureInPictureControllerDidStopPictureInPicture?(pictureInPictureController)
-    }
-
-    private func pictureInPictureControllerShouldProhibitBackgroundAudioPlayback(_ pictureInPictureController: AVPictureInPictureController) -> Bool {
-        pictureInPictureControllerShouldProhibitBackgroundAudioPlayback(pictureInPictureController)
-    }
 }
 
-public protocol UIPiPViewDelegate: AVPictureInPictureControllerDelegate, AVPictureInPictureSampleBufferPlaybackDelegate {
+public protocol UIPiPViewDelegate {
     func pictureInPictureControllerInit(_ pictureInPictureController: AVPictureInPictureController) -> AVPictureInPictureController;
+
+    func pictureInPictureControllerWillStartPictureInPicture(_ pictureInPictureController: AVPictureInPictureController)
+
+    func pictureInPictureControllerDidStartPictureInPicture(_ pictureInPictureController: AVPictureInPictureController)
+
+    func pictureInPictureControllerWillStopPictureInPicture(_ pictureInPictureController: AVPictureInPictureController)
+
+    func pictureInPictureControllerDidStopPictureInPicture(_ pictureInPictureController: AVPictureInPictureController)
 }
 
 public extension UIPiPViewDelegate {
@@ -329,24 +302,15 @@ public extension UIPiPViewDelegate {
         pictureInPictureController
     }
 
-    func pictureInPictureController(_ pictureInPictureController: AVPictureInPictureController, setPlaying playing: Bool) {
+    func pictureInPictureControllerDidStopPictureInPicture(_ pictureInPictureController: AVPictureInPictureController) {
     }
 
-    func pictureInPictureControllerTimeRangeForPlayback(_ pictureInPictureController: AVPictureInPictureController) -> CMTimeRange {
-        fatalError("Not Supported")
+    func pictureInPictureControllerDidStartPictureInPicture(_ pictureInPictureController: AVPictureInPictureController) {
     }
 
-    func pictureInPictureControllerIsPlaybackPaused(_ pictureInPictureController: AVPictureInPictureController) -> Bool {
-        false
+    func pictureInPictureControllerWillStopPictureInPicture(_ pictureInPictureController: AVPictureInPictureController) {
     }
 
-    func pictureInPictureController(_ pictureInPictureController: AVPictureInPictureController, didTransitionToRenderSize newRenderSize: CMVideoDimensions) {
-    }
-
-    func pictureInPictureController(_ pictureInPictureController: AVPictureInPictureController, skipByInterval skipInterval: CMTime, completion completionHandler: @escaping () -> ()) {
-        completionHandler()
-    }
-
-    func pictureInPictureController(_ pictureInPictureController: AVPictureInPictureController, skipByInterval skipInterval: CMTime) async {
+    func pictureInPictureControllerWillStartPictureInPicture(_ pictureInPictureController: AVPictureInPictureController) {
     }
 }
