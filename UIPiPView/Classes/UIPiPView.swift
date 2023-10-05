@@ -10,14 +10,15 @@ import AVKit
 import AVFoundation
 
 open class UIPiPView: UIView,
-    AVPictureInPictureControllerDelegate,
-    AVPictureInPictureSampleBufferPlaybackDelegate {
+        AVPictureInPictureControllerDelegate,
+        AVPictureInPictureSampleBufferPlaybackDelegate {
 
     /// Returns whether or not UIPiPView is supported.
     /// It depends on the iOS version, also note that it cannot be used with the iOS simulator.
     static public func isUIPiPViewSupported() -> Bool {
         if AVPictureInPictureController.isPictureInPictureSupported(), #available(iOS 15.0, *) {
-            return true }
+            return true
+        }
         print("[UIPiPView] UIPiPView cannot be used on this device or OS.")
         return false
     }
@@ -32,8 +33,8 @@ open class UIPiPView: UIView,
     private lazy var pipController: AVPictureInPictureController? = {
         if UIPiPView.isUIPiPViewSupported(), #available(iOS 15.0, *) {
             let controller = AVPictureInPictureController(contentSource: .init(
-                sampleBufferDisplayLayer: pipBufferDisplayLayer,
-                playbackDelegate: self))
+                    sampleBufferDisplayLayer: pipBufferDisplayLayer,
+                    playbackDelegate: self))
             controller.delegate = self
             delegate?.pictureInPictureControllerInit(controller)
             return controller
@@ -58,7 +59,10 @@ open class UIPiPView: UIView,
 
     public func initialize() {
         guard UIPiPView.isUIPiPViewSupported(),
-            #available(iOS 15.0, *) else { return }
+              #available(iOS 15.0, *)
+        else {
+            return
+        }
 
         let session = AVAudioSession.sharedInstance()
         try! session.setCategory(.playback, mode: .moviePlayback)
@@ -69,7 +73,7 @@ open class UIPiPView: UIView,
     /// Also, this function should be called due to a user operation. (This is a limitation of iOS app.)
     /// Every withRefreshInterval (in seconds), the screen will refresh the PiP video image.
     open func startPictureInPicture(
-        withRefreshInterval: TimeInterval
+            withRefreshInterval: TimeInterval
     ) {
         setupVideoLayerView()
         DispatchQueue.main.async { [weak self] in
@@ -88,13 +92,18 @@ open class UIPiPView: UIView,
     }
 
     private func startPictureInPictureSub(
-        refreshInterval: TimeInterval?
+            refreshInterval: TimeInterval?
     ) {
         guard UIPiPView.isUIPiPViewSupported(),
-            #available(iOS 15.0, *) else { return }
+              #available(iOS 15.0, *)
+        else {
+            return
+        }
 
         render() /// For initial display
-        guard let pipController = pipController else { return }
+        guard let pipController = pipController else {
+            return
+        }
         if (pipController.isPictureInPicturePossible) {
 
             /// Start asynchronously after processing is complete
@@ -109,9 +118,11 @@ open class UIPiPView: UIView,
         } else {
             /// It will take some time for PiP to become available.
             pipPossibleObservation = pipController.observe(
-                \AVPictureInPictureController.isPictureInPicturePossible,
-                options: [.initial, .new]) { [weak self] _, change in
-                guard let self = self else { return }
+                    \AVPictureInPictureController.isPictureInPicturePossible,
+                    options: [.initial, .new]) { [weak self] _, change in
+                guard let self = self else {
+                    return
+                }
 
                 if (change.newValue ?? false) {
                     pipController.startPictureInPicture()
@@ -141,8 +152,10 @@ open class UIPiPView: UIView,
 
             /// If the frame size changes, follow it.
             frameSizeObservation = self.observe(
-                \UIPiPView.frame, options: [.initial, .new]) { [weak self] _, _ in
-                guard let self = self else { return }
+                    \UIPiPView.frame, options: [.initial, .new]) { [weak self] _, _ in
+                guard let self = self else {
+                    return
+                }
                 self.videoLayerView.frame = self.bounds
             }
         }
@@ -150,7 +163,9 @@ open class UIPiPView: UIView,
 
     /// Stop PiP.
     open func stopPictureInPicture() {
-        guard let pipController = pipController else { return }
+        guard let pipController = pipController else {
+            return
+        }
         if pipController.isPictureInPictureActive {
             pipController.stopPictureInPicture()
         }
@@ -162,7 +177,9 @@ open class UIPiPView: UIView,
 
     /// Returns whether PiP is running or not.
     open func isPictureInPictureActive() -> Bool {
-        guard let pipController = pipController else { return false }
+        guard let pipController = pipController else {
+            return false
+        }
         return pipController.isPictureInPictureActive
     }
 
@@ -175,7 +192,9 @@ open class UIPiPView: UIView,
         if (pipBufferDisplayLayer.status == .failed) {
             pipBufferDisplayLayer.flush()
         }
-        guard let buffer = makeNextVideoBuffer() else { return }
+        guard let buffer = makeNextVideoBuffer() else {
+            return
+        }
         pipBufferDisplayLayer.enqueue(buffer)
     }
 
@@ -183,14 +202,19 @@ open class UIPiPView: UIView,
     /// If you have been calling render manually and
     /// want to change to using Timer to call render, use this function.
     open func setRenderInterval(
-        _ interval: TimeInterval
+            _ interval: TimeInterval
     ) {
         guard UIPiPView.isUIPiPViewSupported(),
-            #available(iOS 15.0, *) else { return }
+              #available(iOS 15.0, *)
+        else {
+            return
+        }
 
         refreshIntervalTimer = Timer(
-            timeInterval: interval, repeats: true) { [weak self] _ in
-            guard let self = self else { return }
+                timeInterval: interval, repeats: true) { [weak self] _ in
+            guard let self = self else {
+                return
+            }
             self.render()
         }
         RunLoop.main.add(refreshIntervalTimer, forMode: .default)
@@ -205,21 +229,21 @@ open class UIPiPView: UIView,
 
     // MARK: AVPictureInPictureControllerDelegate
     private func pictureInPictureController(
-        _ pictureInPictureController: AVPictureInPictureController,
-        failedToStartPictureInPictureWithError error: Error
+            _ pictureInPictureController: AVPictureInPictureController,
+            failedToStartPictureInPictureWithError error: Error
     ) {
         delegate?.pictureInPictureController?(pictureInPictureController, failedToStartPictureInPictureWithError: error)
     }
 
     private func pictureInPictureControllerWillStartPictureInPicture(
-        _ pictureInPictureController: AVPictureInPictureController
+            _ pictureInPictureController: AVPictureInPictureController
     ) {
         delegate?.pictureInPictureControllerWillStartPictureInPicture?(pictureInPictureController)
     }
 
     /// Always call the parent when overriding this function.
     private func pictureInPictureControllerWillStopPictureInPicture(
-        _ pictureInPictureController: AVPictureInPictureController
+            _ pictureInPictureController: AVPictureInPictureController
     ) {
         refreshIntervalTimer?.invalidate()
         refreshIntervalTimer = nil
@@ -228,14 +252,14 @@ open class UIPiPView: UIView,
 
     // MARK: AVPictureInPictureSampleBufferPlaybackDelegate
     private func pictureInPictureController(
-        _ pictureInPictureController: AVPictureInPictureController,
-        setPlaying playing: Bool
+            _ pictureInPictureController: AVPictureInPictureController,
+            setPlaying playing: Bool
     ) {
         delegate?.pictureInPictureController(pictureInPictureController, setPlaying: playing)
     }
 
     private func pictureInPictureControllerTimeRangeForPlayback(
-        _ pictureInPictureController: AVPictureInPictureController
+            _ pictureInPictureController: AVPictureInPictureController
     ) -> CMTimeRange {
         //not going to ask delegate for performance issue
 
@@ -251,22 +275,22 @@ open class UIPiPView: UIView,
     }
 
     private func pictureInPictureControllerIsPlaybackPaused(
-        _ pictureInPictureController: AVPictureInPictureController
+            _ pictureInPictureController: AVPictureInPictureController
     ) -> Bool {
         delegate?.pictureInPictureControllerIsPlaybackPaused(pictureInPictureController)
     }
 
     private func pictureInPictureController(
-        _ pictureInPictureController: AVPictureInPictureController,
-        didTransitionToRenderSize newRenderSize: CMVideoDimensions
+            _ pictureInPictureController: AVPictureInPictureController,
+            didTransitionToRenderSize newRenderSize: CMVideoDimensions
     ) {
         delegate?.pictureInPictureController(pictureInPictureController, didTransitionToRenderSize: newRenderSize)
     }
 
     private func pictureInPictureController(
-        _ pictureInPictureController: AVPictureInPictureController,
-        skipByInterval skipInterval: CMTime,
-        completion completionHandler: @escaping () -> Void
+            _ pictureInPictureController: AVPictureInPictureController,
+            skipByInterval skipInterval: CMTime,
+            completion completionHandler: @escaping () -> Void
     ) {
         delegate?.pictureInPictureController(pictureInPictureController, skipByInterval: skipInterval, completion: completionHandler)
     }
@@ -296,6 +320,33 @@ open class UIPiPView: UIView,
     }
 }
 
-open protocol UIPiPViewDelegate : AVPictureInPictureControllerDelegate, AVPictureInPictureSampleBufferPlaybackDelegate{
+open protocol UIPiPViewDelegate: AVPictureInPictureControllerDelegate, AVPictureInPictureSampleBufferPlaybackDelegate {
     func pictureInPictureControllerInit(_ pictureInPictureController: AVPictureInPictureController) -> AVPictureInPictureController;
+}
+
+extension UIPiPViewDelegate {
+    public func pictureInPictureControllerInit(_ pictureInPictureController: AVPictureInPictureController) -> AVPictureInPictureController {
+        pictureInPictureController
+    }
+
+    public func pictureInPictureController(_ pictureInPictureController: AVPictureInPictureController, setPlaying playing: Bool) {
+    }
+
+    public func pictureInPictureControllerTimeRangeForPlayback(_ pictureInPictureController: AVPictureInPictureController) -> CMTimeRange {
+        fatalError("Not Supported")
+    }
+
+    public func pictureInPictureControllerIsPlaybackPaused(_ pictureInPictureController: AVPictureInPictureController) -> Bool {
+        false
+    }
+
+    public func pictureInPictureController(_ pictureInPictureController: AVPictureInPictureController, didTransitionToRenderSize newRenderSize: CMVideoDimensions) {
+    }
+
+    public func pictureInPictureController(_ pictureInPictureController: AVPictureInPictureController, skipByInterval skipInterval: CMTime, completion completionHandler: @escaping () -> ()) {
+        completionHandler()
+    }
+
+    public func pictureInPictureController(_ pictureInPictureController: AVPictureInPictureController, skipByInterval skipInterval: CMTime) async {
+    }
 }
